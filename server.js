@@ -104,7 +104,8 @@ function get_sitting_signal(data){
     } else {
         const last_info = sitting_info_list.at(-1);
         const continue_time = 2000;
-        if (Math.abs(last_info.end - sit_d) > continue_time) {
+        console.log(last_info)
+        if (sit_d - last_info.end > continue_time) {
             sitting_info_list.push(get_new_sitting_info(sit_d));
             switch_act_signal();
         } else {
@@ -119,7 +120,7 @@ function get_sitting_signal(data){
 }
 
 function end_sitting_handler(data) {
-    sitting_info_list.at(-1).end = data.time;
+    sitting_info_list.at(-1).end = new Date(data.time);
     if (is_act_on) {
         switch_act_signal();
     }
@@ -137,7 +138,6 @@ function set_threshold_handler(event) {
 
 function set_threshold(value) {
     console.log("threshold: " + value);
-
     channel_measure.send({
         type: "set_threshold",
         threshold: value,
