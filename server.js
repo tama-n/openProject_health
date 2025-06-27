@@ -33,7 +33,7 @@ onload = async function(){
 	channel_measure.onmessage = receiver;
     channel_measure.send({type: "request_cast_threshold"});
 
-	channel_act = await relay.subscribe("isutribute_act");
+	channel_act = await relay.subscribe("isutribute_motor");
     channel_act.onmessage = debug_act_receiver;
 
 	messageDiv.innerText="web socketリレーサービスに接続しました";
@@ -55,7 +55,8 @@ function receiver(msg) { // メッセージを受信したときに起動する�
 
 function debug_act_receiver(msg) {
     let data = msg.data;
-    console.log("receive " + data.type);
+    console.log("receive? " + data.type);
+    console.log(msg);
 }
 
 function get_new_sitting_info(sit_d) {
@@ -84,15 +85,19 @@ function display_sitting_log() {
 
 let is_act_on = false;
 
-function switch_act_signal() {
-    if (is_act_on) { // OFF
-        channel_act.send({ type: "after_over_sitting_signal" });
-        console.log("sent: " +  "after_over_sitting_signal");
-        is_act_on = false;
-    } else { // ON
+function actuator_on() {
+    if (!is_act_on) { 
         console.log("sent: " +  "over_sitting_signal");
         channel_act.send({ type: "over_sitting_signal" });
         is_act_on = true;
+    }
+}
+
+function actuator_off() {
+    if (is_act_on) { 
+        channel_act.send({ type: "after_over_sitting_signal" });
+        console.log("sent: " +  "after_over_sitting_signal");
+        is_act_on = false;
     }
 }
 
@@ -104,14 +109,12 @@ function get_sitting_signal(data){
     } else {
         const last_info = sitting_info_list.at(-1);
         const continue_time = 2000;
-        console.log(last_info)
         if (sit_d - last_info.end > continue_time) {
             sitting_info_list.push(get_new_sitting_info(sit_d));
-            switch_act_signal();
         } else {
             sitting_info_list.at(-1).end = sit_d;
-            if (!is_act_on && is_over_sat(sitting_info_list.at(-1))) {
-                switch_act_signal();
+            if (is_over_sat(sitting_info_list.at(-1))) {
+                actuator_on();
             }
         }
     }
@@ -121,9 +124,7 @@ function get_sitting_signal(data){
 
 function end_sitting_handler(data) {
     sitting_info_list.at(-1).end = new Date(data.time);
-    if (is_act_on) {
-        switch_act_signal();
-    }
+    actuator_off();
 }
 
 function cast_threshold_handler(data) {
