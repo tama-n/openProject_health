@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+</head>
+<script type="module" src="server.js"></script>
+<body>
+<h3 id="deviceTitle">Sitting Watcher</h3>
+<!-- <input type="button" onclick="sayHello()" value="Hello"></input> -->
+<div id="messageDiv" ></div>
+
+<div style="display: flex;">
+    <div style="flex: 1;">
+        log:
+        <div id="sittingLog" ></div>
+    </div>
+
+    <div style="flex: 1;">
+        <table>
+          <tr>
+            <td>over-sitting time(s):</td>
+            <td><span id="overSiggingThresholdGuide"></span></td>
+            <td>
+              <input id="overSittingThresholdInput" type="range" value="10" min="0" max="60" step="1"
+                onchange="set_over_sitting_threshold(event)" 
+                oninput="show_over_sitting_threshold(event)" />
+            </td>
+          </tr>
+          <tr>
+            <td>weight threshold:</td>
+            <td><span id="thresholdGuide"></span></td>
+            <td>
+              <input id="thresholdInput" type="range" value="10" min="0" max="511" step="5"
+                onchange="set_threshold(event)" 
+                oninput="show_threshold(event)" />
+            </td>
+          </tr>
+        </table>
+
+        <div style="display: flex; justify-items: start">
+            <div style="flex: 1;">
+                <input type="button" onclick="test_act()" value="TEST_ACT"/>
+            </div>
+            <div style="flex: 1;">
+                <input type="button" onclick="test_act_stop()" value="TEST_ACT_STOP"/>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+</body>
+</html>
