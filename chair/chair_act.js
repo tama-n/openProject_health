@@ -5,9 +5,6 @@
 import { requestGPIOAccess } from "./node_modules/node-web-gpio/dist/index.js";
 const sleep = msec => new Promise(resolve => setTimeout(resolve, msec));
 
-import nodeWebSocketLib from "websocket"; // https://www.npmjs.com/package/websocket
-import {RelayServer} from "./RelayServer.js";
-
 const portAddrs = [20, 21]; // HブリッジコントローラをつなぐGPIOポート番号
 let ports;
 
@@ -31,12 +28,18 @@ async function fwd() {
     ports[1].write(0);
 }
 
-async function rev() {
+async function back() {
     ports[0].write(0);
     ports[1].write(1);
 }
 
-async function init() {
+async function reset() {
+    await back();
+    await sleep(timing);
+    await brake();
+}
+
+export async function init_motor() {
     // ポートを初期化するための非同期関数
     const gpioAccess = await requestGPIOAccess(); // thenの前の関数をawait接頭辞をつけて呼び出します。
     ports = [];
@@ -48,29 +51,20 @@ async function init() {
     for (let i = 0; i < 2; i++) {
         ports[i].write(0);
     }
+    await reset();
 }
 
-async function connect() {
-	// webSocketリレーの初期化
-	var relay = RelayServer("chirimentest", "chirimenSocket" , nodeWebSocketLib, "https://chirimen.org");
-	channel = await relay.subscribe("isutribute_motor");
-	console.log("web socketリレーサービスに接続しました");
-	channel.onmessage = receiver;
+let timing = 1000;
+export async function actuator_on() {
+    await fwd();
+    console.log("fwd");
+    await sleep(timing);
+    await brake();
 }
 
-async function init_all() {
-    await init();
-    await connect();
+export async function actuator_off() {
+    await back();
+    console.log("back");
+    await sleep(timing);
+    await brake();
 }
-
-function receiver(msg) {
-    let data = msg.data;
-    console.log(data.type);
-    if (data.type == "over_sitting_signal") {
-        fwd();
-    } else if (data.type == "after_over_sitting_signal") {
-        brake();
-    }
-}
-
-await init_all();
