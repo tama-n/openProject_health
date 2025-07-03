@@ -5,6 +5,8 @@ import {RelayServer} from "./RelayServer.js";
 import { requestI2CAccess } from "./node_modules/node-web-i2c/index.js";
 import ADS1X15 from "@chirimen/ads1x15";
 
+import { init_motor, actuator_on, actuator_off } from "./chair_act.js"
+
 var channel;
 var ads1115;
 
@@ -23,6 +25,8 @@ async function init_all() {
 
     await connect();
     cast_threshold();
+
+    await init_motor();
 }
 
 async function connect(){
@@ -73,12 +77,15 @@ async function main() {
                 "time": new Date().toISOString(),
             });
             console.log("sent");
+            if (!is_last_sit)
+                actuator_on();
             is_last_sit = true;
         } else if (is_last_sit) {
             channel.send({
                 "type": "end_sitting_signal",
                 "time": new Date().toISOString(),
             });
+            actuator_off();
             is_last_sit = false;
         }
 
