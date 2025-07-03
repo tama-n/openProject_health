@@ -85,7 +85,7 @@ function display_sitting_log() {
 
 let is_act_on = false;
 
-function actuator_on() {
+function actuator_on_checked() {
     if (!is_act_on) { 
         console.log("sent: " +  "over_sitting_signal");
         channel_act.send({ type: "over_sitting_signal" });
@@ -93,7 +93,7 @@ function actuator_on() {
     }
 }
 
-function actuator_off() {
+function actuator_off_checked() {
     if (is_act_on) { 
         channel_act.send({ type: "after_over_sitting_signal" });
         console.log("sent: " +  "after_over_sitting_signal");
@@ -114,7 +114,7 @@ function get_sitting_signal(data){
         } else {
             sitting_info_list.at(-1).end = sit_d;
             if (is_over_sat(sitting_info_list.at(-1))) {
-                actuator_on();
+                actuator_on_checked();
             }
         }
     }
@@ -124,7 +124,7 @@ function get_sitting_signal(data){
 
 function end_sitting_handler(data) {
     sitting_info_list.at(-1).end = new Date(data.time);
-    actuator_off();
+    actuator_off_checked();
 }
 
 function cast_threshold_handler(data) {
