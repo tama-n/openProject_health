@@ -65,9 +65,7 @@ function bend_receiver() {
     state.bend.count++;
     if (state.bend.count >= 10) {
         state.mode = AFTER_OVER_SITTING;
-        return;
     }
-    messageDiv.innerText = "運動してください あと" + (10 - state.bend.count) + "回";
 }
 
 function debug_act_receiver(msg) {
@@ -207,8 +205,25 @@ function test_actuator_on() {
     channel_measure.send({ type: "actuator_on" });
 }
 
-function over_sit_notaton() {
-    messageDiv.innerText = "運動してください";
+function display_notation() {
+    switch(state.mode) {
+        case BEFORE_OVER_SITTING: {
+            messageDiv.innerText = "運動してください";
+            break;
+        }
+        case ACTING: {
+            messageDiv.innerText = "フットレストが動きます";
+            break;
+        }
+        case AFTER_OVER_SITTING: {
+            messageDiv.innerText = "Good Job!";
+            break;
+        }
+        case OVER_SITTING: {
+            messageDiv.innerText = "運動してください あと" + (10 - state.bend.count) + "回";
+            break;
+        }
+    }
 }
 
 let DEFAULT = "default";
@@ -228,6 +243,7 @@ async function main() {
     while (true) {
         // console.log(state);
         display_sitting_log();
+        display_notation();
         switch (state.mode) {
             case BEFORE_OVER_SITTING: {
                 over_sit_notaton();
@@ -235,7 +251,6 @@ async function main() {
                 break;
             }
             case AFTER_OVER_SITTING: {
-                messageDiv.innerText = "Good Job!";
                 state.bend.count = 0;
                 sitting_info_list.at(-1).allowed = true;
                 state.mode = DEFAULT;
