@@ -24,20 +24,16 @@ let data = {
  **/
 let sitting_info_list = [];
 
-var channel_measure;
-var channel_act;
+var channel_chair;
 var channel_bend;
 onload = async function(){
 	// webSocketリレーの初期化
 	var relay = RelayServer("chirimentest", "chirimenSocket" );
 
-	channel_measure = await relay.subscribe("isutribute_measure");
+	channel_chair = await relay.subscribe("isutribute_measure");
 
-	channel_measure.onmessage = receiver;
-    channel_measure.send({type: "request_cast_threshold"});
-
-	channel_act = await relay.subscribe("isutribute_motor");
-    channel_act.onmessage = debug_act_receiver;
+	channel_chair.onmessage = receiver;
+    channel_chair.send({type: "request_cast_threshold"});
 
 	channel_bend = await relay.subscribe("bend_sensor_channel");
 	channel_bend.onmessage = bend_receiver;
@@ -68,12 +64,6 @@ function bend_receiver() {
     }
 }
 
-function debug_act_receiver(msg) {
-    let data = msg.data;
-    console.log("receive? " + data.type);
-    console.log(msg);
-}
-
 function get_new_sitting_info(sit_d) {
     return {
         begin: sit_d,
@@ -100,31 +90,12 @@ function display_sitting_log() {
         .join("");
 }
 
-let is_act_on = false;
-
-function actuator_on_checked() {
-    if (!is_act_on) { 
-        console.log("sent: " +  "over_sitting_signal");
-        channel_act.send({ type: "over_sitting_signal" });
-        is_act_on = true;
-    }
-}
-
-function actuator_off_checked() {
-    if (is_act_on) { 
-        channel_act.send({ type: "after_over_sitting_signal" });
-        console.log("sent: " +  "after_over_sitting_signal");
-        is_act_on = false;
-    }
-}
-
 function is_new_log(last_info, sit_d) {
     const continue_time = 2000;
     return last_info.allowed || sit_d - last_info.end > continue_time;
 }
 
 function get_sitting_signal(data){
-
     const sit_d = new Date(data.time);
     if (sitting_info_list.length == 0) {
         sitting_info_list.push(get_new_sitting_info(sit_d));
@@ -135,7 +106,6 @@ function get_sitting_signal(data){
         } else {
             sitting_info_list.at(-1).end = sit_d;
             if (is_over_sat(sitting_info_list.at(-1)) && state.mode == DEFAULT) {
-                // actuator_on_checked();
                 state.mode = BEFORE_OVER_SITTING;
             }
         }
@@ -144,7 +114,6 @@ function get_sitting_signal(data){
 
 function end_sitting_handler(data) {
     sitting_info_list.at(-1).end = new Date(data.time);
-    actuator_off_checked();
 }
 
 function cast_threshold_handler(data) {
@@ -159,7 +128,7 @@ function set_threshold_handler(event) {
 
 function set_threshold(value) {
     console.log("threshold: " + value);
-    channel_measure.send({
+    channel_chair.send({
         type: "set_threshold",
         threshold: value,
     });
@@ -180,7 +149,7 @@ function show_over_sitting_threshold(event) {
 async function test_measure() {
     console.log("send: sitting_signal");
     for (let i = 0; i < 6; i++) {
-        channel_measure.send({ 
+        channel_chair.send({ 
                 "type": "sitting_signal",
                 "time": new Date().toISOString(),
         });
@@ -197,12 +166,12 @@ function test_bend() {
 
 function test_actuator_off() {
     console.log("send: " +  "actuator_off");
-    channel_measure.send({ type: "actuator_off" });
+    channel_chair.send({ type: "actuator_off" });
 }
 
 function test_actuator_on() {
     console.log("send: " +  "actuator_on");
-    channel_measure.send({ type: "actuator_on" });
+    channel_chair.send({ type: "actuator_on" });
 }
 
 function display_notation() {
@@ -257,12 +226,10 @@ async function main() {
                 break;
             }
             case ACTING: {
-                actuator_on_checked();
                 state.mode = DEFAULT;
                 break;
             }
             default: {
-                actuator_off_checked();
             }
         }
         await sleep(5);
