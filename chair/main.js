@@ -69,16 +69,13 @@ async function main() {
                 "time": new Date().toISOString(),
             });
             console.log("sent");
-            if (!is_last_sit) {
-                actuator_on();
-            }
             is_last_sit = true;
         } else if (is_last_sit) {
             channel.send({
                 "type": "end_sitting_signal",
                 "time": new Date().toISOString(),
+
             });
-            actuator_off();
             is_last_sit = false;
         }
         await sleep(1000);

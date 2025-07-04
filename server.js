@@ -5,8 +5,11 @@ window.show_threshold =  show_threshold;
 window.set_threshold  = set_threshold_handler;
 window.show_over_sitting_threshold =  show_over_sitting_threshold;
 window.set_over_sitting_threshold = set_over_sitting_threshold;
+
 window.test_measure = test_measure;
 window.test_bend = test_bend;
+window.test_actuator_off = test_actuator_off;
+window.test_actuator_on = test_actuator_on;
 
 let data = {
     "threshold": 0,
@@ -119,7 +122,7 @@ function actuator_off_checked() {
 
 function is_new_log(last_info, sit_d) {
     const continue_time = 2000;
-    return last_info.allowed || sit_d - last_info.end > continue_time
+    return last_info.allowed || sit_d - last_info.end > continue_time;
 }
 
 function get_sitting_signal(data){
@@ -177,7 +180,7 @@ function show_over_sitting_threshold(event) {
 }
 
 async function test_measure() {
-    console.log("sent: sitting_signal");
+    console.log("send: sitting_signal");
     for (let i = 0; i < 6; i++) {
         channel_measure.send({ 
                 "type": "sitting_signal",
@@ -188,10 +191,20 @@ async function test_measure() {
 }
 
 function test_bend() {
-    console.log("sent: is_moved from bend channel");
+    console.log("send: is_moved from bend channel");
     channel_bend.send({ 
             "type": "is_moved",
     });
+}
+
+function test_actuator_off() {
+    console.log("send: " +  "actuator_off");
+    channel_measure.send({ type: "actuator_off" });
+}
+
+function test_actuator_on() {
+    console.log("send: " +  "actuator_on");
+    channel_measure.send({ type: "actuator_on" });
 }
 
 function over_sit_notaton() {
