@@ -17,6 +17,10 @@ function receiver(msg) {
         change_threshold(data)
     } else if (data.type == "request_cast_threshold") {
         cast_threshold();
+    } else if (data.type == "actuator_on") {
+        actuator_on();
+    } else if (data.type == "actuator_off") {
+        actuator_off();
     }
 }
 

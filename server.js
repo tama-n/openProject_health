@@ -5,9 +5,8 @@ window.show_threshold =  show_threshold;
 window.set_threshold  = set_threshold_handler;
 window.show_over_sitting_threshold =  show_over_sitting_threshold;
 window.set_over_sitting_threshold = set_over_sitting_threshold;
-window.test_act = test_act;
-window.test_act_stop = test_act_stop;
-
+window.test_measure = test_measure;
+window.test_bend = test_bend;
 
 let data = {
     "threshold": 0,
@@ -24,6 +23,7 @@ let sitting_info_list = [];
 
 var channel_measure;
 var channel_act;
+var channel_bend;
 onload = async function(){
 	// webSocketリレーの初期化
 	var relay = RelayServer("chirimentest", "chirimenSocket" );
@@ -36,6 +36,9 @@ onload = async function(){
 	channel_act = await relay.subscribe("isutribute_motor");
     channel_act.onmessage = debug_act_receiver;
 
+	channel_bend = await relay.subscribe("bend_sensor_channel");
+	channel_bend.onmessage = bend_receiver;
+
 	messageDiv.innerText="web socketリレーサービスに接続しました";
 
     overSiggingThresholdGuide.innerText = over_sitting_threshold / 1000;
@@ -44,6 +47,7 @@ onload = async function(){
 
 function receiver(msg) { // メッセージを受信したときに起動する関数
     let data = msg.data;
+    console.log(data);
     if (data.type == "sitting_signal") {
         get_sitting_signal(data);
     } else if (data.type == "cast_threshold") {
@@ -51,6 +55,16 @@ function receiver(msg) { // メッセージを受信したときに起動する�
     } else if (data.type == "end_sitting_signal") {
         end_sitting_handler(data);
     } 
+}
+
+function bend_receiver() {
+    if (state.mode != OVER_SITTING) return;
+    state.bend.count++;
+    if (state.bend.count >= 10) {
+        state.mode = AFTER_OVER_SITTING;
+        return;
+    }
+    messageDiv.innerText = "運動してください あと" + (10 - state.bend.count) + "回";
 }
 
 function debug_act_receiver(msg) {
@@ -63,12 +77,14 @@ function get_new_sitting_info(sit_d) {
     return {
         begin: sit_d,
         end: sit_d,
+        allowed: false,
     };
 }
 
 let over_sitting_threshold = 5000;
 function is_over_sat(info) {
-    return info.end - info.begin >= over_sitting_threshold;
+    return !info.allowed && 
+        info.end - info.begin >= over_sitting_threshold;
 }
 
 function display_sitting_log() {
@@ -101,6 +117,11 @@ function actuator_off_checked() {
     }
 }
 
+function is_new_log(last_info, sit_d) {
+    const continue_time = 2000;
+    return last_info.allowed || sit_d - last_info.end > continue_time
+}
+
 function get_sitting_signal(data){
 
     const sit_d = new Date(data.time);
@@ -108,18 +129,16 @@ function get_sitting_signal(data){
         sitting_info_list.push(get_new_sitting_info(sit_d));
     } else {
         const last_info = sitting_info_list.at(-1);
-        const continue_time = 2000;
-        if (sit_d - last_info.end > continue_time) {
+        if (is_new_log(last_info, sit_d)) {
             sitting_info_list.push(get_new_sitting_info(sit_d));
         } else {
             sitting_info_list.at(-1).end = sit_d;
-            if (is_over_sat(sitting_info_list.at(-1))) {
-                actuator_on_checked();
+            if (is_over_sat(sitting_info_list.at(-1)) && state.mode == DEFAULT) {
+                // actuator_on_checked();
+                state.mode = BEFORE_OVER_SITTING;
             }
         }
     }
-
-    display_sitting_log();
 }
 
 function end_sitting_handler(data) {
@@ -151,19 +170,76 @@ function show_threshold(event) {
 
 function set_over_sitting_threshold(event) {
     over_sitting_threshold = event.target.value * 1000;
-    display_sitting_log();
 }
 
 function show_over_sitting_threshold(event) {
     overSiggingThresholdGuide.innerText = event.target.value;
 }
 
-function test_act() {
-    console.log("sent: over_sitting_signal");
-    channel_act.send({ type: "over_sitting_signal" });
+async function test_measure() {
+    console.log("sent: sitting_signal");
+    for (let i = 0; i < 6; i++) {
+        channel_measure.send({ 
+                "type": "sitting_signal",
+                "time": new Date().toISOString(),
+        });
+        await sleep(1000);
+    }
 }
 
-function test_act_stop() {
-    console.log("sent: after_over_sitting_signal");
-    channel_act.send({ type: "after_over_sitting_signal" });
+function test_bend() {
+    console.log("sent: is_moved from bend channel");
+    channel_bend.send({ 
+            "type": "is_moved",
+    });
 }
+
+function over_sit_notaton() {
+    messageDiv.innerText = "運動してください";
+}
+
+let DEFAULT = "default";
+let OVER_SITTING = "over_sitting";
+let BEFORE_OVER_SITTING = "before_over_sitting";
+let AFTER_OVER_SITTING = "after_sitting";
+let ACTING = "acting";
+
+let state = {
+    mode: DEFAULT,
+    bend: {
+        count: 0,
+    }
+};
+
+async function main() {
+    while (true) {
+        // console.log(state);
+        display_sitting_log();
+        switch (state.mode) {
+            case BEFORE_OVER_SITTING: {
+                over_sit_notaton();
+                state.mode = OVER_SITTING;
+                break;
+            }
+            case AFTER_OVER_SITTING: {
+                messageDiv.innerText = "Good Job!";
+                state.bend.count = 0;
+                sitting_info_list.at(-1).allowed = true;
+                state.mode = DEFAULT;
+                break;
+            }
+            case ACTING: {
+                actuator_on_checked();
+                state.mode = DEFAULT;
+                break;
+            }
+            default: {
+                actuator_off_checked();
+            }
+        }
+        await sleep(5);
+    }
+
+}
+
+await main();
