@@ -9,7 +9,7 @@ window.set_over_sitting_threshold = set_over_sitting_threshold;
 window.test_measure = test_measure;
 window.test_bend = test_bend;
 window.test_actuator_off = test_actuator_off;
-window.test_actuator_on = test_actuator_on;
+window.test_actuator_on = test_stretch;
 
 let data = {
     "threshold": 0,
@@ -47,6 +47,7 @@ onload = async function(){
 function receiver(msg) { // メッセージを受信したときに起動する関数
     let data = msg.data;
     console.log(data);
+    console.log(state.mode);
     if (data.type == "sitting_signal") {
         get_sitting_signal(data);
     } else if (data.type == "cast_threshold") {
@@ -57,10 +58,21 @@ function receiver(msg) { // メッセージを受信したときに起動する�
 }
 
 function bend_receiver() {
-    if (state.mode != OVER_SITTING) return;
-    state.bend.count++;
-    if (state.bend.count >= 10) {
-        state.mode = AFTER_OVER_SITTING;
+    console.log(data);
+    console.log(state.mode);
+    console.log(state.bend.count);
+    if (
+        state.mode == OVER_SITTING 
+        || state.mode == BENDING
+        || state.mode == BEFORE_ACTING
+    ) {
+        state.mode = BENDING;
+        state.bend.count++;
+        state.bend.start_time = new Date();
+        // if (state.bend.count >= 10) {
+        if (state.bend.count >= 5) {
+            state.mode = AFTER_OVER_SITTING;
+        }
     }
 }
 
@@ -68,13 +80,13 @@ function get_new_sitting_info(sit_d) {
     return {
         begin: sit_d,
         end: sit_d,
-        allowed: false,
+        finished: false,
     };
 }
 
 let over_sitting_threshold = 5000;
 function is_over_sat(info) {
-    return !info.allowed && 
+    return !info.finished && 
         info.end - info.begin >= over_sitting_threshold;
 }
 
@@ -92,7 +104,7 @@ function display_sitting_log() {
 
 function is_new_log(last_info, sit_d) {
     const continue_time = 2000;
-    return last_info.allowed || sit_d - last_info.end > continue_time;
+    return last_info.finished || sit_d - last_info.end > continue_time;
 }
 
 function get_sitting_signal(data){
@@ -148,7 +160,7 @@ function show_over_sitting_threshold(event) {
 
 async function test_measure() {
     console.log("send: sitting_signal");
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 7; i++) {
         channel_chair.send({ 
                 "type": "sitting_signal",
                 "time": new Date().toISOString(),
@@ -174,6 +186,24 @@ function test_actuator_on() {
     channel_chair.send({ type: "actuator_on" });
 }
 
+function test_stretch() {
+    console.log("send: " +  "stretch");
+
+    channel_chair.send({
+        type: "stretch_signal", 
+    });
+}
+
+async function before_acting_notation() {
+    for (let i = 20; i >= 0; i--) {
+        if (state.mode == BENDING) return false;
+        messageDiv.innerText = "フットレストが動くまで: " + i;
+        display_sitting_log();
+        await sleep(1000);
+    }
+    return true;
+}
+
 function display_notation() {
     switch(state.mode) {
         case BEFORE_OVER_SITTING: {
@@ -184,11 +214,15 @@ function display_notation() {
             messageDiv.innerText = "フットレストが動きます";
             break;
         }
+        case AFTER_ACTING :{
+            messageDiv.innerText = "次はがんばってください";
+            break;
+        }
         case AFTER_OVER_SITTING: {
             messageDiv.innerText = "Good Job!";
             break;
         }
-        case OVER_SITTING: {
+        case BENDING: {
             messageDiv.innerText = "運動してください あと" + (10 - state.bend.count) + "回";
             break;
         }
@@ -198,34 +232,68 @@ function display_notation() {
 let DEFAULT = "default";
 let OVER_SITTING = "over_sitting";
 let BEFORE_OVER_SITTING = "before_over_sitting";
+let BENDING = "bending";
 let AFTER_OVER_SITTING = "after_sitting";
+let BEFORE_ACTING = "before_acting";
 let ACTING = "acting";
+let AFTER_ACTING = "after_acting";
 
 let state = {
     mode: DEFAULT,
     bend: {
         count: 0,
+        start_time: new Date(),
     }
 };
+
+function is_timeover() {
+    let now = new Date();
+    const MAX_WAIT_TIME = 10 * 1000;
+    return now - state.bend.start_time > MAX_WAIT_TIME;
+}
 
 async function main() {
     while (true) {
         // console.log(state);
+        
         display_sitting_log();
         display_notation();
         switch (state.mode) {
             case BEFORE_OVER_SITTING: {
-                over_sit_notaton();
+                state.bend.start_time = new Date();
                 state.mode = OVER_SITTING;
+                break;
+            }
+            case BENDING:
+            case OVER_SITTING: {
+                if (is_timeover()) {
+                    if (state.mode == BENDING) state.bend.count = 0;
+                    if (!mannerModeCheckBox.checkbox) state.mode = BEFORE_ACTING;
+                }
                 break;
             }
             case AFTER_OVER_SITTING: {
                 state.bend.count = 0;
-                sitting_info_list.at(-1).allowed = true;
+                sitting_info_list.at(-1).finished = true;
                 state.mode = DEFAULT;
                 break;
             }
+            case BEFORE_ACTING: {
+                if (await before_acting_notation()) {
+                    state.mode = ACTING;
+                }
+                break;
+            }
             case ACTING: {
+                channel_chair.send({
+                    type: "stretch_signal", 
+                });
+                await sleep(3000);
+                state.mode = AFTER_ACTING;
+                break;
+            }
+            case AFTER_ACTING: {
+                sitting_info_list.at(-1).finished = true;
                 state.mode = DEFAULT;
                 break;
             }

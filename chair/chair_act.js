@@ -60,6 +60,7 @@ export async function actuator_on() {
     console.log("fwd");
     await sleep(timing);
     await brake();
+    await sleep(timing);
 }
 
 export async function actuator_off() {
@@ -67,4 +68,20 @@ export async function actuator_off() {
     console.log("back");
     await sleep(timing);
     await brake();
+    await sleep(timing);
+}
+
+let is_stretch_continue = false;
+export async function stretch() {
+    is_stretch_continue = true;
+    for (let i = 0; i < 10; i++) {
+        await actuator_on();
+        await sleep(1000);
+        await actuator_off();
+        await sleep(1000);
+    }
+}
+
+export async function stop_stretch() {
+    is_stretch_continue = false;
 }

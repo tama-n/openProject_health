@@ -12,7 +12,7 @@ export async function init_measure() {
 }
 
 export async function measure() {
-    const base = 22;
+    const base = 15;
     // p0-p1 differential mode
     var difA = await ads1115.read("0,1");  
     return difA - base;
