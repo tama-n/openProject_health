@@ -2,7 +2,7 @@ const sleep = msec => new Promise(resolve => setTimeout(resolve, msec));
 import nodeWebSocketLib from "websocket"; // https://www.npmjs.com/package/websocket
 import {RelayServer} from "./RelayServer.js";
 
-import { init_motor, actuator_on, actuator_off } from "./chair_act.js";
+import { init_motor, stretch, stop_stretch } from "./chair_act.js";
 import { init_measure, measure } from "./measure.js";
 
 var channel;
@@ -11,12 +11,20 @@ var state = {
     weight: 0,
 };
 
-function receiver(msg) {
+async function receiver(msg) {
     let data = msg.data;
     if (data.type == "set_threshold") {
         change_threshold(data)
     } else if (data.type == "request_cast_threshold") {
         cast_threshold();
+    } else if (data.type == "actuator_on") {
+        actuator_on();
+    } else if (data.type == "actuator_off") {
+        actuator_off();
+    } else if (data.type == "stretch_signal") {
+        await stretch();
+    } else if (data.type == "stretch_stop_signal") {
+        await stop_stretch();
     }
 }
 
@@ -65,16 +73,13 @@ async function main() {
                 "time": new Date().toISOString(),
             });
             console.log("sent");
-            if (!is_last_sit) {
-                actuator_on();
-            }
             is_last_sit = true;
         } else if (is_last_sit) {
             channel.send({
                 "type": "end_sitting_signal",
                 "time": new Date().toISOString(),
+
             });
-            actuator_off();
             is_last_sit = false;
         }
         await sleep(1000);

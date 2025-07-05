@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 </head>
-<script type="module" src="server.js"></script>
+<script type="module" src="./server.js"></script>
 <body>
 <h3 id="deviceTitle">Sitting Watcher</h3>
 <!-- <input type="button" onclick="sayHello()" value="Hello"></input> -->
@@ -37,12 +37,25 @@
           </tr>
         </table>
 
+        <div>
+            <input type="checkbox" id="mannerModeCheckBox" />
+            <label for="manor">マナーモード</label>
+        </div>
         <div style="display: flex; justify-items: start">
             <div style="flex: 1;">
-                <input type="button" onclick="test_act()" value="TEST_ACT"/>
+                <input type="button" onclick="test_measure()" value="SITTING"/>
             </div>
             <div style="flex: 1;">
-                <input type="button" onclick="test_act_stop()" value="TEST_ACT_STOP"/>
+                <input type="button" onclick="test_bend()" value="BENDING"/>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-items: start">
+            <div style="flex: 1;">
+                <input type="button" onclick="test_actuator_on()" value="TEST_ACT"/>
+            </div>
+            <div style="flex: 1;">
+                <input type="button" onclick="test_actuator_off()" value="TEST_ACT_STOP"/>
             </div>
         </div>
     </div>
